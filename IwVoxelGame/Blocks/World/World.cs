@@ -1,49 +1,84 @@
-﻿using IwVoxelGame.Utils;
+﻿using IwVoxelGame.Graphics;
+using IwVoxelGame.Utils;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace IwVoxelGame.Blocks.World {
     public class World {
-        private readonly Dictionary<Vector3i, Chunk> _chunks;
+        public const int MaxChunkUpdate = 6;
 
-        public Dictionary<Vector3i, Chunk> Chunks => _chunks;
+        private readonly Dictionary<Vector3i, Chunk> _loadedChunks;
+        private readonly Dictionary<Vector3i, Chunk> _chunksReadyToAdd;
+        private readonly List<Vector3i> _chunksReadyToRemove;
+
+        private readonly Queue<Chunk> _chunksReadyToUpload;
+        private readonly Queue<Chunk> _populatedChunks;
+        private readonly Queue<Chunk> _chunkUpdates;
+
+        private readonly Thread _unloadThread;
+        private readonly Thread _loadThread;
+        private readonly Thread _updateThread;
 
         public World() {
-            _chunks = new Dictionary<Vector3i, Chunk>();
+            _loadedChunks = new Dictionary<Vector3i, Chunk>();
+            _chunksReadyToAdd = new Dictionary<Vector3i, Chunk>();
+            _chunksReadyToRemove = new List<Vector3i>();
+            _chunksReadyToUpload = new Queue<Chunk>();
+            _populatedChunks = new Queue<Chunk>();
+            _chunkUpdates = new Queue<Chunk>();
+            
+            _unloadThread = new Thread(UnloadThread) { Name = "Unload Thread" };
+            _loadThread = new Thread(LoadThread) { Name = "Load Thread" };
+            _updateThread = new Thread(UpdateThread) { Name = "Update Thread" };
+
+            _unloadThread.Start();
+            _loadThread.Start();
+            _updateThread.Start();
         }
 
-        public void SetBlock(Vector3i position, Block block) {
-            var pos = FormatPosition(position);
 
-            if (_chunks.TryGetValue(pos.chunkPos, out Chunk chunk)) {
-                chunk.SetBlock(pos.blockPos, block);
+        
+        public void SetBlock(int x, int y, int z, Block block, bool update) { SetBlock(new Vector3i(x, y, z), block, update); }
+        public void SetBlock(Vector3i pos, Block block, bool update) {
+            var position = FormatPosition(pos);
+            Vector3i chunkPos = position.chunkPos;
+            Vector3i blockPos = position.blockPos;
+
+            if(_loadedChunks.TryGetValue(chunkPos, out Chunk chunk)) {
+                if (chunk.GetBlock(blockPos).Id == block.Id) return;
+                chunk.SetBlock(blockPos, block);
             } else {
-                Chunk newChunk = new Chunk(this, pos.chunkPos);
-                newChunk.SetBlock(pos.blockPos, block);
-                _chunks.Add(pos.chunkPos, newChunk);
+                chunk = new Chunk(this, chunkPos);
+                chunk.SetBlock(blockPos, block);
+            }
+
+            //Do not update chunks
+            if (!update) return;
+
+            //Update chunks
+            if (blockPos.X == 0)                   QueueChunkUpdate(chunkPos + new Vector3i(-1, 0, 0));
+            else if (blockPos.X == Chunk.Size - 1) QueueChunkUpdate(chunkPos + new Vector3i(+1, 0, 0));
+
+            if (blockPos.Y == 0)                   QueueChunkUpdate(chunkPos + new Vector3i(0, -1, 0));
+            else if (blockPos.Y == Chunk.Size - 1) QueueChunkUpdate(chunkPos + new Vector3i(0, +1, 0));
+
+            if (blockPos.Z == 0)                   QueueChunkUpdate(chunkPos + new Vector3i(0, 0, -1));
+            else if (blockPos.Z == Chunk.Size - 1) QueueChunkUpdate(chunkPos + new Vector3i(0, 0, +1));
+
+            QueueChunkUpdate(chunk);
+        }
+
+        public void QueueChunkUpdate(Vector3i chunkPos) {
+            if(_loadedChunks.TryGetValue(chunkPos, out Chunk chunk)) {
+                QueueChunkUpdate(chunk);
             }
         }
 
-        public Block GetBlock(Vector3i position) {
-            var pos = FormatPosition(position);
-
-            Block block = null;
-            if (_chunks.TryGetValue(pos.chunkPos, out Chunk chunk)) {
-                block = chunk.GetBlock(pos.blockPos);
+        public void QueueChunkUpdate(Chunk chunk) {
+            lock(_chunkUpdates) {
+                _chunkUpdates.Enqueue(chunk);
             }
-
-            return block;
-        }
-
-        public void Update() {
-            foreach (Chunk chunk in _chunks.Values) {
-                chunk.Update();
-            }
-        }
-
-        public void GenerateChunk(Vector3i chunkPos) {
-            Chunk chunk = new Chunk(this, chunkPos);
-            chunk.Generate();
-            _chunks.Add(chunkPos, chunk);
         }
 
         private (Vector3i chunkPos, Vector3i blockPos) FormatPosition(Vector3i position) {

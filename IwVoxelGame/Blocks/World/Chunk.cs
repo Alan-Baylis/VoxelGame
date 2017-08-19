@@ -17,7 +17,7 @@ namespace IwVoxelGame.Blocks.World {
 
         private VertexArrayObject<Vector3> vao;
         private bool needsRenderUpdate;
-        
+
         public Chunk(World world, Vector3i chunkPos) {
             _blocks = new Block[Size, Size, Size];
             _world = world;
@@ -27,7 +27,21 @@ namespace IwVoxelGame.Blocks.World {
             vao.SetVbo(0, new VertexBufferObject<Vector3>(Vector3.SizeInBytes, 3, VertexAttribPointerType.Float));
             vao.SetVbo(1, new VertexBufferObject<Vector3>(Vector3.SizeInBytes, 3, VertexAttribPointerType.Float));
 
+            needsRenderUpdate = true;
+
             Logger.Debug($"New chunk created at {chunkPos}");
+        }
+
+        public void Generate(OpenSimplexNoise noise) {
+            for (int x = 0; x < Size; x++) {
+                for (int y = 0; y < Size; y++) {
+                    for (int z = 0; z < Size; z++) {
+                        if(noise.Evaluate(x, y, z) > 0) {
+                            SetBlock(new Vector3i(x, y, z), new BlockStone());
+                        }
+                    }
+                }
+            }
         }
 
         public void SetBlock(Vector3i position, Block block) {
@@ -50,10 +64,6 @@ namespace IwVoxelGame.Blocks.World {
 
                 vao.Upload();
             }
-        }
-
-        public void Generate() {
-            _blocks[1, 0, 0] = new BlockStone();
         }
 
         public void Draw() {

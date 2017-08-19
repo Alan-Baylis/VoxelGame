@@ -1,4 +1,5 @@
-﻿using IwVoxelGame.Blocks.World;
+﻿using IwVoxelGame.Blocks;
+using IwVoxelGame.Blocks.World;
 using IwVoxelGame.Graphics;
 using IwVoxelGame.Graphics.Shaders;
 using IwVoxelGame.Utils;
@@ -17,7 +18,6 @@ using System.Threading.Tasks;
 namespace IwVoxelGame {
     public class MainWindow : GameWindow {
         World world;
-        WorldGeneration worldGen;
         TextureArray2D textureArray;
         ShaderProgram shader;
         Matrix4 projection;
@@ -43,8 +43,8 @@ namespace IwVoxelGame {
             mouseSensitivity = 0.005f;
 
             world = new World();
-            worldGen = new WorldGeneration();
-            worldGen.Generate(camera.transform.position, world);
+            Chunk chunk = world.CreateAndAddChunk(camera.transform.GetChunk());
+            WorldGeneration.QueueChunk(chunk);
         }
 
         protected override void OnResize(EventArgs e) {
@@ -77,7 +77,7 @@ namespace IwVoxelGame {
             }
 
             if(mouseState.IsButtonDown(MouseButton.Left)) {
-                worldGen.Generate(camera.transform.position, world);
+                world.Update();
             }
 
             lastMouseState = mouseState;

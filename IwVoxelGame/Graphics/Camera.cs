@@ -12,7 +12,7 @@ namespace IwVoxelGame.Graphics {
         public Matrix4 view;
 
         public Camera() {
-            transform = new Transform(new Vector3(0, 10, 100), Vector3.Zero, Vector3.Zero);
+            transform = new Transform(new Vector3(0, 0, 100), Vector3.Zero, Vector3.Zero);
         }
 
         public void Move(Vector3 moveVector) {

@@ -1,4 +1,5 @@
-﻿using IwVoxelGame.Utils;
+﻿using IwVoxelGame.Blocks.World;
+using IwVoxelGame.Utils;
 using OpenTK;
 using System;
 using System.Collections.Generic;
@@ -63,6 +64,13 @@ namespace IwVoxelGame.Components {
 
         public void Rotate(float yaw, float pitch, float roll) {
             Rotate(new Vector3(yaw, pitch, roll));
+        }
+
+        public Vector3i GetChunk() {
+            return new Vector3i(
+                (int)(position.X / Chunk.Size),
+                (int)(position.Y / Chunk.Size),
+                (int)(position.Z / Chunk.Size));
         }
     }
 }

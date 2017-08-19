@@ -75,7 +75,7 @@
     <Compile Include="Utils\BlockHelper.cs" />
     <Compile Include="Utils\Logger.cs" />
     <Compile Include="Utils\OpenSimplexNoise.cs" />
-    <Compile Include="Utils\ThreadedConsole.cs" />
+    <Compile Include="Utils\QueuedConsole.cs" />
     <Compile Include="Utils\Vector3i.cs" />
     <Compile Include="Utils\VectorExtensions.cs" />
   </ItemGroup>
