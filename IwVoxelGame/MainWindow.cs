@@ -42,9 +42,12 @@ namespace IwVoxelGame {
             camera = new Camera();
             mouseSensitivity = 0.005f;
 
-            world = new World();
-            Chunk chunk = world.CreateAndAddChunk(camera.transform.GetChunk());
-            WorldGeneration.QueueChunk(chunk);
+            Chunk chunk = new Chunk(world, new Vector3i(0, 0, 0));
+            chunk.SetBlock(new Vector3i(0, 0, 0), new BlockStone());
+            chunk.Update();
+
+            //world = new World();
+            //world.LoadChunk(new Vector3i(0, 0, 0));
         }
 
         protected override void OnResize(EventArgs e) {
@@ -76,13 +79,10 @@ namespace IwVoxelGame {
                 camera.Rotate(yaw * mouseSensitivity, pitch * mouseSensitivity, 0);
             }
 
-            if(mouseState.IsButtonDown(MouseButton.Left)) {
-                world.Update();
-            }
-
             lastMouseState = mouseState;
 
             camera.Update();
+            world.Update();
         }
 
         protected override void OnRenderFrame(FrameEventArgs e) {

@@ -57,7 +57,6 @@
     <Compile Include="Blocks\BlockType.cs" />
     <Compile Include="Blocks\World\Chunk.cs" />
     <Compile Include="Blocks\World\World.cs" />
-    <Compile Include="Blocks\World\WorldGeneration.cs" />
     <Compile Include="Components\Transform.cs" />
     <Compile Include="Graphics\Camera.cs" />
     <Compile Include="Graphics\Shaders\Shader.cs" />

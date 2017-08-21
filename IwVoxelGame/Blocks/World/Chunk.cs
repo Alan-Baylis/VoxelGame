@@ -36,7 +36,7 @@ namespace IwVoxelGame.Blocks.World {
             for (int x = 0; x < Size; x++) {
                 for (int y = 0; y < Size; y++) {
                     for (int z = 0; z < Size; z++) {
-                        if(noise.Evaluate(x, y, z) > 0) {
+                        if (noise.Evaluate(x, y, z) > 0) {
                             SetBlock(new Vector3i(x, y, z), new BlockStone());
                         }
                     }
@@ -58,10 +58,6 @@ namespace IwVoxelGame.Blocks.World {
 
         public void Update() {
             if (needsRenderUpdate) {
-                vao.Clear();
-
-                AddBlocksToVao();
-
                 vao.Upload();
             }
         }
@@ -70,7 +66,7 @@ namespace IwVoxelGame.Blocks.World {
             vao.Draw(BeginMode.Triangles, DrawElementsType.UnsignedInt);
         }
 
-        private void AddBlocksToVao() {
+        public void AddBlocksToVao() {
             for (int x = 0; x < _blocks.GetLength(0); x++) {
                 for (int y = 0; y < _blocks.GetLength(1); y++) {
                     for (int z = 0; z < _blocks.GetLength(2); z++) {
