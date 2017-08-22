@@ -42,12 +42,8 @@ namespace IwVoxelGame {
             camera = new Camera();
             mouseSensitivity = 0.005f;
 
-            Chunk chunk = new Chunk(world, new Vector3i(0, 0, 0));
-            chunk.SetBlock(new Vector3i(0, 0, 0), new BlockStone());
-            chunk.Update();
-
-            //world = new World();
-            //world.LoadChunk(new Vector3i(0, 0, 0));
+            world = new World();
+            world.LoadChunk(new Vector3i(0, 0, 0));
         }
 
         protected override void OnResize(EventArgs e) {
@@ -82,7 +78,7 @@ namespace IwVoxelGame {
             lastMouseState = mouseState;
 
             camera.Update();
-            world.Update();
+            world.Update(camera);
         }
 
         protected override void OnRenderFrame(FrameEventArgs e) {

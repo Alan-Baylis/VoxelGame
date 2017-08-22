@@ -17,6 +17,8 @@ namespace IwVoxelGame.Graphics {
         private readonly VertexBufferObject<TVector>[] _vbos;
         private readonly List<uint> _indices;
 
+        private bool _boolHasBeenUploaded;
+
         public VertexArrayObject(int bufferCount) {
             _vaoId = GL.GenVertexArray();
             _indicesId = GL.GenBuffer();
@@ -56,11 +58,15 @@ namespace IwVoxelGame.Graphics {
 
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, _indicesId);
             GL.BufferData(BufferTarget.ElementArrayBuffer, _indices.Count * sizeof(uint), _indices.ToArray(), BufferUsageHint.StaticDraw);
+
+            _boolHasBeenUploaded = true;
         }
 
         public void Draw(BeginMode mode, DrawElementsType type) {
-            GL.BindVertexArray(_vaoId);
-            GL.DrawElements(mode, _indices.Count, type, 0);
+            if (_boolHasBeenUploaded) {
+                GL.BindVertexArray(_vaoId);
+                GL.DrawElements(mode, _indices.Count, type, 0);
+            }
         }
 
         public void Clear() {

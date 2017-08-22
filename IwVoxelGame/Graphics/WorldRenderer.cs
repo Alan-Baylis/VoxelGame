@@ -5,7 +5,7 @@ using OpenTK.Graphics.OpenGL4;
 namespace IwVoxelGame.Graphics {
     public static class WorldRenderer {
         public static void RenderWorld(World world) {
-            foreach (var chunk in world.Chunks) {
+            foreach (var chunk in world.LoadedChunks) {
                 Matrix4 worldMat = Matrix4.CreateTranslation(
                     chunk.Key.X * Chunk.Size,
                     chunk.Key.Y * Chunk.Size,

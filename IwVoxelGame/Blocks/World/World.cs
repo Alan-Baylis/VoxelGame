@@ -7,59 +7,98 @@ using System;
 using System.Threading.Tasks;
 
 namespace IwVoxelGame.Blocks.World {
-    /**
-     * 
-     * World
-     * 
-     * Queue chunks by position for loading
-     * 'Load' chunk on thread by generating blocks
-     * pass back information to main thread to be assigned to a new chunk
-     * render all chunks
-     * 
-     * unload chunks if they get too far away
-     **/
-
     public class World {
         private readonly Dictionary<Vector3i, Chunk> _chunks;
+        private readonly Dictionary<Vector3i, Chunk> _loadedChunks;
+        private readonly Dictionary<Vector3i, Chunk> _unloadedChunks;
         private readonly Queue<Chunk> m_chunksToBeLoaded;
+        private readonly Queue<Chunk> m_chunksToBeUnloaded;
         private readonly Queue<Chunk> m_chunksToBeGenerated;
 
-        public Dictionary<Vector3i, Chunk> Chunks => _chunks;
+        private readonly double _chunkTimeout = 10000;
+
+        public Dictionary<Vector3i, Chunk> LoadedChunks => _loadedChunks;
 
         public World() {
             _chunks = new Dictionary<Vector3i, Chunk>();
+            _loadedChunks = new Dictionary<Vector3i, Chunk>();
+            _unloadedChunks = new Dictionary<Vector3i, Chunk>();
             m_chunksToBeLoaded = new Queue<Chunk>();
+            m_chunksToBeUnloaded = new Queue<Chunk>();
             m_chunksToBeGenerated = new Queue<Chunk>();
         }
 
         public void LoadChunk(Vector3i position) {
-            if(!_chunks.TryGetValue(position, out Chunk chunk)) {
-                chunk = new Chunk(this, position);
-                _chunks.Add(position, chunk);
-                //Task.Factory.StartNew(()=> { GenerateChunk(chunk); });
-                GenerateChunk(chunk);
+            if(_unloadedChunks.ContainsKey(position)) {
+                SetLoadChunk(_unloadedChunks[position]);
+                return;
             }
-        }
 
-        private void GenerateChunk(Chunk chunk) {
-            chunk.SetBlock(new Vector3i(0, 0, 0), new BlockStone());
-            chunk.AddBlocksToVao();
-            m_chunksToBeLoaded.Enqueue(chunk);
-        }
+            if (!_loadedChunks.TryGetValue(position, out Chunk chunk)) {
+                chunk = new Chunk(this, position);
 
-        public void Update() {
-            lock(m_chunksToBeLoaded) {
-                while(m_chunksToBeLoaded.Count > 0) {
-                    m_chunksToBeLoaded.Dequeue().Update();
+                SetLoadChunk(chunk);
+
+                if (!chunk.HasBeenGenerated) {
+                    Task.Factory.StartNew(() => { GenerateChunk(chunk); });
                 }
             }
         }
 
+        public void SetLoadChunk(Chunk chunk) {
+            chunk.LoadTime = Time.GameTime;
+            _loadedChunks.Add(chunk.Position, chunk);
+            _unloadedChunks.Remove(chunk.Position);
+        }
+
+        public void UnloadChunk(Chunk chunk) {
+            _loadedChunks.Remove(chunk.Position);
+            _unloadedChunks.Add(chunk.Position, chunk);
+        }
+
+        private void GenerateChunk(Chunk chunk) {
+            chunk.Generate();
+            m_chunksToBeLoaded.Enqueue(chunk);
+        }
+
+        public void Update(Camera camera) {
+            //Queue unload world
+            lock (_loadedChunks) {
+                foreach (Chunk chunk in _loadedChunks.Values) {
+                    if (Time.GameTime - chunk.LoadTime > _chunkTimeout) {
+                        m_chunksToBeUnloaded.Enqueue(chunk);
+                    }
+                }
+            }
+
+            //Unload chunks
+            lock(m_chunksToBeUnloaded) {
+                while(m_chunksToBeUnloaded.Count > 0) {
+                    UnloadChunk(m_chunksToBeUnloaded.Dequeue());
+
+                    Logger.Debug($"Loaded chunks: {_loadedChunks.Count}   Unloaded chunks: {_unloadedChunks.Count}");
+                }
+            }
+
+            //Load chunks
+            lock (m_chunksToBeLoaded) {
+                while (m_chunksToBeLoaded.Count > 0) {
+                    m_chunksToBeLoaded.Dequeue()?.Update();
+
+                    Logger.Debug($"Loaded chunks: {_loadedChunks.Count}   Unloaded chunks: {_unloadedChunks.Count}");
+                }
+            }
+
+            //Load world
+            LoadWorldAroundPlayer(camera.transform.GetChunk(), 4);
+        }
+
         public void SetBlock(Vector3i worldPos, Block block) {
             var position = FormatPosition(worldPos);
-            if(_chunks.TryGetValue(position.chunkPos, out Chunk chunk)) {
+            if (_chunks.TryGetValue(position.chunkPos, out Chunk chunk)) {
                 chunk.SetBlock(position.blockPos, block);
-            } else {
+            }
+            else {
                 LoadChunk(position.chunkPos);
                 SetBlock(worldPos, block);
             }
@@ -68,10 +107,29 @@ namespace IwVoxelGame.Blocks.World {
         public Block GetBlock(Vector3i worldPos) {
             var position = FormatPosition(worldPos);
 
-            if(_chunks.TryGetValue(worldPos, out Chunk chunk)) {
+            if (_chunks.TryGetValue(worldPos, out Chunk chunk)) {
                 return chunk.GetBlock(position.blockPos);
-            } else {
+            }
+            else {
                 return null;
+            }
+        }
+
+        private void LoadWorldAroundPlayer(Vector3i position, int maxChunkDistance) {
+            Vector3i start = new Vector3i(
+                position.X - maxChunkDistance,
+                position.Y - maxChunkDistance,
+                position.Z - maxChunkDistance
+                );
+
+            Vector3i end = start + maxChunkDistance * 2;
+
+            for (int x = start.X; x < end.X; x++) {
+                for (int y = start.Y; y < end.Y; y++) {
+                    for (int z = start.Z; z < end.Z; z++) {
+                        LoadChunk(new Vector3i(x, y, z));
+                    }
+                }
             }
         }
 
